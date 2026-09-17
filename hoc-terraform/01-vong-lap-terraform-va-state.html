@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chương 1 — Vòng lặp Terraform & đọc state</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --text: #1c2330; --muted: #5b6676;
+    --accent: #2563eb; --accent-soft: #dbeafe; --code-bg: #0f172a; --code-text: #e2e8f0;
+    --border: #dde3ea; --ok: #16a34a; --warn: #d97706;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b0f17; --card: #121826; --text: #dbe2ec; --muted: #8b96a8;
+      --accent: #60a5fa; --accent-soft: #1e3a5f; --code-bg: #0d1320; --code-text: #dbe2ec;
+      --border: #232d3f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.65; font-size: 16px; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; }
+  nav.chapbar { display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0 4px; font-size: .88rem; }
+  nav.chapbar a { color: var(--accent); text-decoration: none; background: var(--card);
+    border: 1px solid var(--border); border-radius: 999px; padding: 4px 14px; }
+  nav.chapbar a:hover { background: var(--accent-soft); }
+  h1 { font-size: 1.7rem; margin: 14px 0 4px; }
+  h1 .sub { display: block; font-size: .95rem; color: var(--muted); font-weight: 400; }
+  h2 { font-size: 1.3rem; margin: 42px 0 12px; border-bottom: 2px solid var(--accent); padding-bottom: 6px; }
+  h3 { font-size: 1.05rem; margin: 24px 0 8px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; margin: 14px 0; }
+  .note { border-left: 4px solid var(--accent); }
+  .warn { border-left: 4px solid var(--warn); }
+  .ok   { border-left: 4px solid var(--ok); }
+  code, .mono { font-family: ui-monospace, "JetBrains Mono", Consolas, monospace;
+    background: var(--code-bg); color: var(--code-text); padding: 2px 7px; border-radius: 6px; font-size: .86em; }
+  pre.code { background: var(--code-bg); color: var(--code-text); padding: 16px 18px; border-radius: 12px;
+    overflow-x: auto; font-size: .88rem; line-height: 1.7;
+    font-family: ui-monospace, "JetBrains Mono", Consolas, monospace; }
+  pre.code .c { color: #6b7a99; } pre.code .s { color: #a5d6ff; }
+  pre.code .a { color: #7ee787; } pre.code .n { color: #ffa657; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: .92rem; }
+  th, td { border: 1px solid var(--border); padding: 9px 12px; text-align: left; vertical-align: top; }
+  th { background: var(--accent-soft); }
+  tr:nth-child(even) td { background: rgba(127,127,127,.045); }
+  details { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 10px 16px; margin: 10px 0; }
+  summary { cursor: pointer; font-weight: 600; }
+  footer { margin-top: 56px; color: var(--muted); font-size: .85rem; border-top: 1px solid var(--border); padding-top: 16px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<nav class="chapbar">
+  <a href="00-danh-muc.html">📚 Danh mục</a>
+  <span style="align-self:center">Chương 1 / 9</span>
+  <a href="02-keypair-security-group-va-doc-plan.html">Chương 2 →</a>
+</nav>
+
+<h1>Chương 1 · Vòng lặp Terraform & đọc state
+  <span class="sub">Học ngày 17/09/2026 — từ file main.tf 12 dòng tới hiểu "Terraform nghĩ gì"</span>
+</h1>
+
+<!-- ================= 1 ================= -->
+<h2>1 · Vòng lặp làm việc với Terraform</h2>
+<div class="card">
+<pre class="code"><span class="a">terraform init</span>     <span class="c"># 1 lần đầu (+ mỗi lần đổi provider): tải plugin về .terraform/</span>
+<span class="a">terraform plan</span>     <span class="c"># tính toán: "nếu apply thì đời sẽ thay đổi gì?" — KHÔNG đụng vào AWS</span>
+<span class="a">terraform apply</span>    <span class="c"># làm thật (in plan lần cuối, hỏi "yes")</span>
+<span class="a">terraform destroy</span>  <span class="c"># xóa sạch mọi resource Terraform đang quản lý</span></pre>
+<b>Tư duy vòng lặp:</b> sửa code → <code>plan</code> → đọc kỹ → <code>apply</code> → <code>plan</code> lần nữa phải ra <i>"No changes"</i>. Khi nào plan còn thay đổi là khi đó code chưa phản ánh đúng thực tế.
+</div>
+
+<h2>2 · terraform.tfstate — bộ nhớ của Terraform</h2>
+<div class="card note">
+State là file JSON ghi: <b>"Terraform đang quản lý resource nào, ID thật của chúng trên AWS là gì, và lần cuối thấy chúng ra sao"</b>.
+</div>
+<pre class="code">{
+  "version": 4,
+  "terraform_version": "1.16.3",
+  "serial": 3,                     <span class="c"># số thứ tự bản ghi — mỗi apply là +1</span>
+  "lineage": "30cf7503-...",       <span class="c"># mã định danh của file state này</span>
+  "resources": [
+    {
+      "type": "aws_instance",      <span class="c"># kiểu resource</span>
+      "name": "example",           <span class="c"># nhãn trong code</span>
+      "instances": [
+        { "attributes": {
+            "id": "i-075ab17e330ceca34",   <span class="c"># ← ID THẬT trên AWS</span>
+            "ami": "ami-048cdccbe32bcb9a8",
+            "public_ip": "3.25.144.194",
+            ...  //  toàn bộ trạng thái AWS trả về
+        } }
+      ]
+    }
+  ]
+}</pre>
+<table>
+<tr><th>Điều cần nhớ</th><th>Hậu quả nếu quên</th></tr>
+<tr><td>Địa chỉ trong code (<code>aws_instance.example</code>) ↔ ID thật (<code>i-075ab...</code>) chỉ được nối nhau nhờ state</td><td>Mất state → Terraform không còn biết tài nguyên nào của mình: không update, không destroy được nữa (phải <code>import</code> lại) — và plan sẽ đòi tạo chồng asset mới</td></tr>
+<tr><td>State chứa thông tin nhạy cảm (IP, ID, sau này có thể cả secrets)</td><td>Không commit <code>.tfstate</code> bừa lên Git công khai — chương 6 sẽ học cất nó trên S3</td></tr>
+</table>
+
+<h2>3 · terraform show — đọc state bằng mắt người</h2>
+<div class="card">
+<code>terraform show</code> render state thành cú pháp HCL dễ đọc. Khi đọc output dài, <b>phân loại mọi giá trị vào 3 nhóm</b>:
+<table>
+<tr><th>Nhóm</th><th>Từ đâu ra</th><th>Ví dụ</th></tr>
+<tr><td>✍️ Bạn khai báo</td><td>giống hệt main.tf</td><td><code>ami</code>, <code>instance_type</code>, <code>tags</code></td></tr>
+<tr><td>🤖 AWS tính toán</td><td>AWS tự sinh, không ai viết</td><td><code>public_ip</code>, <code>private_ip</code>, <code>arn</code>, <code>subnet_id</code>, <code>availability_zone</code></td></tr>
+<tr><td>⚙️ Default provider</td><td>plugin tự điền</td><td><code>tenancy = "default"</code>, <code>source_dest_check = true</code></td></tr>
+</table>
+Và đọc theo <b>cụm chức năng</b> thay vì từng dòng: danh tính (id/arn) → mạng (public/private ip) → đĩa (root_block_device) → bảo mật (metadata_options, key_name) → phần còn lại (cpu_options, enclave_options… bỏ qua được lúc mới học).
+</div>
+
+<h2>4 · Ký hiệu trong plan — bảng tra 4 nút</h2>
+<table>
+<tr><th>Ký hiệu</th><th>Nghĩa</th><th>Câu hỏi cần tự trả lời</th></tr>
+<tr><td><code>+ create</code></td><td>tài nguyên mới tinh</td><td>ai tham chiếu nó?</td></tr>
+<tr><td><code>~ update in-place</code></td><td>sửa tại chỗ, máy không chết</td><td>có downtime ngầm không?</td></tr>
+<tr><td><code>-/+ destroy and then create replacement</code></td><td><b>đập đi tạo lại</b> — IP mới, ID mới, data trên đĩa mất</td><td><b>dòng nào ghi "# forces replacement"?</b> đó là nguyên nhân thật</td></tr>
+<tr><td><code>- destroy</code></td><td>xóa hẳn</td><td>còn ai tham chiếu nó không?</td></tr>
+</table>
+<div class="card warn"><b>Kỹ năng lọc nhiễu:</b> khi resource bị replace, cả trăm dòng <code>-> (known after apply)</code> bắn ra chỉ vì AWS chưa tạo lại — <b>đó không phải thay đổi bạn yêu cầu</b>. Lọc hết chúng đi, phần còn lại mới là ý định thật.</div>
+
+<h2>5 · Refresh & drift — Terraform kiểm tra thực tế trước khi tin bộ nhớ</h2>
+<div class="card note">
+Mỗi <code>plan</code> bắt đầu bằng: <code>aws_instance.example: Refreshing state...</code> — Terraform <b>hỏi AWS thật</b> xem mọi thứ còn y hệt như state ghi không. Nếu ai đó lên console xóa/tắt tay một resource (<b>drift</b>), plan sẽ phát hiện và đòi sửa về đúng code. Bài học nghề nghiệp: <b>đừng sửa tay</b> tài nguyên mà Terraform đang quản lý — sửa code rồi apply.
+</div>
+
+<h2>6 · Lệnh bỏ túi đã dùng</h2>
+<table>
+<tr><th>Lệnh</th><th>Dùng khi</th></tr>
+<tr><td><code>terraform state list</code></td><td>hỏi "Terraform đang quản lý những gì"</td></tr>
+<tr><td><code>terraform state show aws_instance.example</code></td><td>xem chi tiết 1 resource</td></tr>
+<tr><td><code>terraform show | grep public_ip</code></td><td>lấy IP mới sau apply thay vì mở console</td></tr>
+<tr><td><code>terraform force-unlock &lt;ID&gt;</code></td><td>(chương 6) khi state bị khóa dở</td></tr>
+</table>
+
+<h2>7 · Quiz tự kiểm tra</h2>
+<details><summary>1. terraform plan có đụng vào hạ tầng thật không?</summary>Không — plan chỉ tính toán và in ra. Nhưng nó CÓ gọi API đọc (read-only) để refresh và tra data source.</details>
+<details><summary>2. Vì sao "mất tfstate" là tai nạn chứ không phải phiền toái?</summary>Mất ánh xạ code↔ID thật → không update/destroy được tài nguyên cũ; apply tiếp sẽ tạo tài nguyên TRÙNG LẶP (cháy tiền double), hoặc phải import lại bằng tay.</details>
+<details><summary>3. Dòng nào trong plan cho biết nguyên nhân thật của một replacement?</summary>Dòng có <code># forces replacement</code> bên cạnh thuộc tính bị thay đổi.</details>
+<details><summary>4. "known after apply" nghĩa là gì?</summary>Giá trị do AWS sinh lúc tạo nên chưa thể biết — hệ quả của việc tạo lại, không phải thay đổi được yêu cầu.</details>
+<details><summary>5. Bạn tắt EC2 bằng AWS console, chạy plan — điều gì xảy ra?</summary>Refresh phát hiện thực tế lệch state (drift) → plan báo hành động kéo về đúng code (ví dụ start lại máy, hoặc replace). Kết luận: console là chỗ ĐỂ XEM, code mới là chỗ ĐỂ SỬA.</details>
+
+<footer>
+← Danh mục: <a href="00-danh-muc.html">00-danh-muc.html</a> · Chương tiếp: <a href="02-keypair-security-group-va-doc-plan.html">Chương 2 — Key pair, Security Group & đọc plan</a>
+</footer>
+
+</div>
+</body>
+</html>

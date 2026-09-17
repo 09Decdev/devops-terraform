@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terraform — Học từng dòng main.tf</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --text: #1c2330; --muted: #5b6676;
+    --accent: #2563eb; --accent-soft: #dbeafe; --code-bg: #0f172a; --code-text: #e2e8f0;
+    --line-hl: #7dd3fc; --str: #a5d6ff; --kw: #ff7b72; --num: #ffa657;
+    --border: #dde3ea; --ok: #16a34a; --warn: #d97706;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b0f17; --card: #121826; --text: #dbe2ec; --muted: #8b96a8;
+      --accent: #60a5fa; --accent-soft: #1e3a5f; --code-bg: #0d1320; --code-text: #dbe2ec;
+      --border: #232d3f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.65; font-size: 16px;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; }
+  header.hero { padding: 36px 0 8px; }
+  h1 { font-size: 1.9rem; margin: 0 0 8px; }
+  h1 .sub { display: block; font-size: 1rem; color: var(--muted); font-weight: 400; }
+  h2 {
+    font-size: 1.35rem; margin: 48px 0 12px; padding-bottom: 8px;
+    border-bottom: 2px solid var(--accent);
+  }
+  h3 { font-size: 1.05rem; margin: 24px 0 8px; }
+  section { scroll-margin-top: 16px; }
+  nav.toc { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+  nav.toc a {
+    text-decoration: none; color: var(--accent); background: var(--card);
+    border: 1px solid var(--border); border-radius: 999px; padding: 4px 14px; font-size: .85rem;
+  }
+  nav.toc a:hover { background: var(--accent-soft); }
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px 20px; margin: 14px 0;
+  }
+  .note { border-left: 4px solid var(--accent); }
+  .warn { border-left: 4px solid var(--warn); }
+  .ok   { border-left: 4px solid var(--ok); }
+  code.inline, .mono {
+    font-family: ui-monospace, "JetBrains Mono", Consolas, monospace;
+    background: var(--code-bg); color: var(--code-text);
+    padding: 2px 7px; border-radius: 6px; font-size: .86em;
+  }
+  pre.code {
+    background: var(--code-bg); color: var(--code-text); padding: 16px 18px;
+    border-radius: 12px; overflow-x: auto; font-size: .88rem; line-height: 1.7;
+    font-family: ui-monospace, "JetBrains Mono", Consolas, monospace;
+  }
+  pre.code .ln { color: #64748b; user-select: none; display: inline-block; width: 2.4em; text-align: right; margin-right: 1em; }
+  pre.code .c { color: #6b7a99; }      /* comment */
+  pre.code .k { color: #ff7b72; }      /* keyword-ish */
+  pre.code .s { color: #a5d6ff; }      /* string */
+  pre.code .a { color: #7ee787; }      /* attribute */
+  pre.code .n { color: #ffa657; }      /* number/bool */
+  pre.code .r { color: #d2a8ff; }      /* reference */
+  table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: .92rem; }
+  th, td { border: 1px solid var(--border); padding: 9px 12px; text-align: left; vertical-align: top; }
+  th { background: var(--accent-soft); }
+  td .mono { white-space: nowrap; }
+  tr:nth-child(even) td { background: rgba(127,127,127,.045); }
+  details {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 16px; margin: 10px 0;
+  }
+  summary { cursor: pointer; font-weight: 600; }
+  .tag {
+    display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .03em;
+    padding: 2px 9px; border-radius: 999px; margin-right: 6px; vertical-align: 2px;
+  }
+  .tag.create { background: #14532d; color: #bbf7d0; }
+  .tag.read   { background: #713f12; color: #fde68a; }
+  .tag.concept{ background: var(--accent-soft); color: var(--accent); }
+  .graph { display: flex; flex-direction: column; gap: 14px; align-items: center; padding: 8px 0; }
+  .gnode {
+    background: var(--card); border: 2px solid var(--accent); border-radius: 10px;
+    padding: 10px 18px; font-family: ui-monospace, monospace; font-size: .9rem; text-align: center;
+  }
+  .gnode small { display: block; color: var(--muted); font-family: system-ui, sans-serif; }
+  .garrow { color: var(--muted); font-size: 1.3rem; line-height: 1; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 720px) { .cols { grid-template-columns: 1fr; } }
+  footer { margin-top: 56px; color: var(--muted); font-size: .85rem; border-top: 1px solid var(--border); padding-top: 16px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<nav class="toc" style="margin-top:18px">
+  <a href="00-danh-muc.html">📚 Danh mục</a>
+  <a href="01-vong-lap-terraform-va-state.html">← Chương 1</a>
+  <span style="align-self:center; color:var(--muted); font-size:.85rem">Chương 2 / 9 · tiếp: Chương 3 (user_data) — sẽ tạo sau khi học</span>
+</nav>
+
+<header class="hero">
+  <h1>📖 Chương 2 · Học từng dòng <span class="mono">main.tf</span>
+    <span class="sub">Key pair, Security Group, đọc plan — giải thích thuần lý thuyết toàn bộ file 53 dòng · 17/09/2026</span>
+  </h1>
+  <nav class="toc">
+    <a href="#lythuyet">1 · Lý thuyết nền</a>
+    <a href="#hcl">2 · Cú pháp HCL</a>
+    <a href="#tungdong">3 · Từng dòng</a>
+    <a href="#graph">4 · Sơ đồ phụ thuộc</a>
+    <a href="#tudien">5 · Từ điển</a>
+    <a href="#quiz">6 · Tự kiểm tra</a>
+  </nav>
+</header>
+
+<!-- ===================== 1. LÝ THUYẾT ===================== -->
+<section id="lythuyet">
+<h2>1 · Lý thuyết nền — Terraform nghĩ như thế nào</h2>
+
+<div class="card note">
+<b>IaC (Infrastructure as Code)</b> là tư tưởng: hạ tầng (máy chủ, firewall, mạng…) được <i>mô tả bằng file text</i> thay vì click chuột. File text thì <i>diff</i> được, <i>review</i> được, <i>lưu lên Git</i> được, và <i>tạo lại y hệt</i> ở nơi khác được.
+</div>
+
+<h3>Terraform là "khai" chứ không phải "lệnh" (declarative vs imperative)</h3>
+<table>
+  <tr><th></th><th>Cách nghĩ</th><th>Ví dụ</th></tr>
+  <tr><td><b>Imperative</b> (lệnh)</td><td>Viết <i>từng bước làm</i> — như đầu bếp đọc công thức</td><td class="mono">aws ec2 run-instances --image-id ami-... --count 1</td></tr>
+  <tr><td><b>Declarative</b> (khai — Terraform)</td><td>Viết <i>kết quả mong muốn</i> — như đặt món, đầu bếp tự lo thứ tự</td><td class="mono">resource "aws_instance" "example" { ... }</td></tr>
+</table>
+Bạn không bao giờ bảo Terraform "hãy tạo key trước, rồi tạo SG, rồi tạo máy". Bạn chỉ <b>khai báo máy dùng key và SG</b> — thứ tự suy ra từ đó.
+
+<h3>Khoản khắc cốt lõi: 3 "trạng thái"</h3>
+<table>
+  <tr><th>Tên</th><th>Là gì</th><th>Nằm ở đâu trong project của bạn</th></tr>
+  <tr><td><b>Desired state</b><br>(muốn là)</td><td>Mô tả hạ tầng bạn viết</td><td><span class="mono">main.tf</span></td></tr>
+  <tr><td><b>Actual state</b><br>(thực tế là)</td><td>Hạ tầng đang tồn tại trên AWS</td><td>trên vùng <span class="mono">ap-southeast-2</span></td></tr>
+  <tr><td><b>Recorded state</b><br>(ghi nhớ là)</td><td>Bản ghi "Terraform nghĩ thực tế là gì", kèm ID AWS của từng resource</td><td><span class="mono">terraform.tfstate</span></td></tr>
+</table>
+<div class="card note">
+Mọi lệnh Terraform đều xoay quanh 3 cái này:<br>
+• <span class="mono">plan</span> = so <b>muốn</b> với <b>ghi nhớ</b> (có hỏi AWS để cập nhật ghi nhớ cho khỏi sai lệch)<br>
+• <b>điểm chết của Terraform</b>: nếu ai đó lên AWS console xóa máy tay, và <span class="mono">tfstate</span> vẫn ghi còn → nó "tưởng" mọi thứ ổn. Vì vậy luôn chạy <span class="mono">plan</span> (tự refresh) trước khi tin bất cứ điều gì.
+</div>
+
+<h3>Tính idempotent — "chạy bao nhiêu lần cũng ra một kết quả"</h3>
+<span class="mono">apply</span> lần 1: tạo mới 3 resource. <span class="mono">apply</span> lần 2: <b>0 thay đổi</b>. Đây không phải coincidence — là <b>thiết kế</b>: hệ thống luôn bị kéo về đúng mô tả. Kết quả <span class="mono">plan</span> ra <i>"No changes"</i> chính là bằng chứng trạng thái đã "hội tụ" (converged).
+</section>
+
+<!-- ===================== 2. HCL ===================== -->
+<section id="hcl">
+<h2>2 · Cú pháp HCL trong 1 phút</h2>
+<div class="card">
+HCL = ngôn ngữ của Terraform. Chỉ cần hiểu đúng 2 cấu trúc:
+<pre class="code"><span class="ln"></span><span class="c"># CẤU TRÚC 1: BLOCK — "một vật thể có tên"</span>
+<span class="ln"></span><span class="k">loại</span> <span class="s">"kiểu"</span> <span class="s">"nhãn"</span> {
+<span class="ln"></span>  <span class="a">thuộc_tính</span> = <span class="s">"giá trị"</span>
+<span class="ln"></span>}
+<span class="c"># vd: resource "aws_instance" "example" { ... }</span>
+<span class="c">#     ^động từ  ^kiểu (AWS gì?)  ^tên DO BẠN ĐẶT</span>
+
+<span class="ln"></span><span class="c"># CẤU TRÚC 2: GIÁ TRỊ</span>
+<span class="ln"></span><span class="a">chuỗi</span>   = <span class="s">"text"</span>
+<span class="ln"></span><span class="a">số</span>      = <span class="n">22</span>
+<span class="ln"></span><span class="a">boolean</span> = <span class="n">true</span>
+<span class="ln"></span><span class="a">danh sách</span> = [<span class="n">1</span>, <span class="n">2</span>, <span class="n">3</span>]      <span class="c"># [] = list — thứ tự, lặp được</span>
+<span class="ln"></span><span class="a">bản đồ</span>   = { <span class="a">Key</span> = <span class="s">"Value"</span> } <span class="c"># {} = map — tra bằng tên</span>
+
+<span class="ln"></span><span class="c"># THAM CHIẾU: trỏ tới "nhà hàng xóm"</span>
+<span class="ln"></span><span class="r">aws_key_pair.learn_terraform_key.key_name</span>
+<span class="c">#  ^kiểu         ^nhãn            ^thuộc tính lấy ra</span>
+
+<span class="ln"></span><span class="c"># HÀM: file() đọc nội dung file lúc plan</span>
+<span class="ln"></span><span class="a">public_key</span> = <span class="r">file</span>(<span class="s">"/home/nguyenhungvy09/.ssh/devops-learn.pub"</span>)</pre>
+</div>
+</section>
+
+<!-- ===================== 3. TỪNG DÒNG ===================== -->
+<section id="tungdong">
+<h2>3 · Giải thích từng dòng main.tf</h2>
+
+<!-- ---------- block provider ---------- -->
+<h3>🧭 Provider — "Terraform sẽ chơi với cloud nào"</h3>
+<pre class="code"><span class="ln"> 1</span><span class="k">provider</span> <span class="s">"aws"</span> {
+<span class="ln"> 2</span>  <span class="a">region</span>  = <span class="s">"ap-southeast-2"</span>
+<span class="ln"> 3</span>}</pre>
+<table>
+<tr><th style="width:5em">Dòng</th><th>Giải thích</th></tr>
+<tr><td>1</td><td>Block <b>provider</b> = khai báo plugin điều khiển cloud nào. <span class="mono">"aws"</span> là tên plugin (HashiCorp viết sẵn, <span class="mono">terraform init</span> đã tải về — nằm trong thư mục <span class="mono">.terraform/</span>). Một file có thể khai nhiều provider (aws + cloudflare + google…).</td></tr>
+<tr><td>2</td><td><b>region</b> = vùng địa lý数据中心 của AWS sẽ nhận mọi lệnh. <span class="mono">ap-southeast-2</span> = Sydney. <span class="tag concept">Điểm sống còn</span> Mọi ID (AMI, subnet…) chỉ đúng trong <b>một region duy nhất</b> — đó là lý do bạn từng gặp lỗi <span class="mono">InvalidAMIID.NotFound</span>.</td></tr>
+<tr><td>3</td><td>Đóng block.</td></tr>
+</table>
+
+<!-- ---------- block data ---------- -->
+<h3>🔎 Data source — "tra cứu cái đã có, không tạo mới"</h3>
+<pre class="code"><span class="ln"> 5</span><span class="c"># data source = "đọc thứ CÓ SẴN trên AWS" (khác resource = "tạo mới")</span>
+<span class="ln"> 6</span><span class="c"># default VPC đã tồn tại sẵn trong tài khoản -> chỉ việc tra cứu ID của nó</span>
+<span class="ln"> 7</span><span class="k">data</span> <span class="s">"aws_vpc"</span> <span class="s">"default"</span> {
+<span class="ln"> 8</span>  <span class="a">default</span> = <span class="n">true</span>
+<span class="ln"> 9</span>}</pre>
+<table>
+<tr><th style="width:5em">Dòng</th><th>Giải thích</th></tr>
+<tr><td>7</td><td><b>data</b> = từ khóa đối lập với resource: "<i>tài nguyên này KHÔNG do ta tạo, hãy đi đọc thông tin của nó về</i>". Kiểu <span class="mono">aws_vpc</span> = "VPC của AWS"; nhãn <span class="mono">"default"</span> do bạn đặt. Địa chỉ đầy đủ: <span class="mono">data.aws_vpc.default</span>.</td></tr>
+<tr><td>8</td><td><b>default = true</b> là <i>điều kiện lọc</i> khi tra: "tìm cho tôi VPC được đánh dấu là mặc định". Mỗi region có đúng một cái, AWS tự tạo khi bạn mở tài khoản.</td></tr>
+<tr><td>→</td><td>Sau khi đọc, nó xuất ra nhiều thuộc tính: <span class="mono">.id</span> (= <span class="mono">vpc-0bb52fcbdd46b2066</span> — bạn thấy dòng này trong plan), <span class="mono">.cidr_block</span>, <span class="mono">.arn</span>… Dòng 33 dùng <span class="mono">.id</span>.</td></tr>
+</table>
+
+<!-- ---------- block instance ---------- -->
+<h3>🖥️ Resource chính — cái máy chủ EC2</h3>
+<pre class="code"><span class="ln">11</span><span class="k">resource</span> <span class="s">"aws_instance"</span> <span class="s">"example"</span> {
+<span class="ln">12</span>  <span class="a">ami</span>           = <span class="s">"ami-048cdccbe32bcb9a8"</span>
+<span class="ln">13</span>  <span class="a">instance_type</span> = <span class="s">"t3.micro"</span>
+<span class="ln">14</span>
+<span class="ln">15</span>  <span class="c"># 2 dòng này "lắp" key và SG vào instance:</span>
+<span class="ln">16</span>  <span class="a">key_name</span>               = <span class="r">aws_key_pair.learn_terraform_key.key_name</span>
+<span class="ln">17</span>  <span class="a">vpc_security_group_ids</span> = [<span class="r">aws_security_group.learn_terraform_sg.id</span>]
+<span class="ln">18</span>
+<span class="ln">19</span>  <span class="a">tags</span> = {
+<span class="ln">20</span>    <span class="a">Name</span> = <span class="s">"ExampleInstance"</span>
+<span class="ln">21</span>  }
+<span class="ln">22</span>}</pre>
+<table>
+<tr><th style="width:5em">Dòng</th><th>Giải thích</th></tr>
+<tr><td>11</td><td><b>resource</b> = "tạo mới". Kiểu <span class="mono">aws_instance</span> = "một máy EC2"; nhãn <span class="mono">"example"</span> do bạn đặt. <span class="tag concept">Quan trọng</span> Cặp <span class="mono">aws_instance.example</span> là <b>địa chỉ duy nhất trong Terraform</b> — dùng trong <span class="mono">terraform state show aws_instance.example</span>, <span class="mono">-target=...</span>. Nó KHÔNG liên quan gì tới ID thật của AWS (<span class="mono">i-056f...</span>) — Terraform giữ ánh xạ "địa chỉ ↔ ID AWS" trong <span class="mono">tfstate</span>. Đổi nhãn = Terraform tưởng là resource khác (xóa cái cũ tạo cái mới!).</td></tr>
+<tr><td>12</td><td><b>ami</b> = Amazon Machine Image — "bản cài Windows" của máy: chứa OS, driver, cloud-init. ID này là bản Amazon Linux 2023 ở <b>region Sydney</b>. AMI ID không xài chéo region.</td></tr>
+<tr><td>13</td><td><b>instance_type</b> = cấu hình phần cứng (số vCPU, RAM). <span class="mono">t3.micro</span> = 2 vCPU siêu nhỏ / 1GB RAM — hạng Free Tier. Dòng <span class="mono">t</span> = "burstable" (chạy nhỏ giá rẻ, lúc cần burst CPU — bạn thấy <span class="mono">credit_specification</span> trong show).</td></tr>
+<tr><td>16</td><td>Tham chiếu: "lấy <span class="mono">key_name</span> của cái key pair ở dòng 24". Máy chỉ SSH được nếu boot với key. <span class="tag create">forces replacement</span> Đổi giá trị này trên máy đang chạy = AWS không cho → Terraform đập máy cũ tạo máy mới (bạn đã chứng kiến tận mắt).</td></tr>
+<tr><td>17</td><td><b>list</b> các SG (dấu <span class="mono">[]</span> là vì có thể gắn nhiều SG — luật của mọi SG <b>cộng dồn</b>). Ở đây một SG. Đây là SG kiểu VPC, nên trường tên là <span class="mono">vpc_...</span>.</td></tr>
+<tr><td>19–21</td><td><b>tags</b> = map nhãn dán lên resource trên AWS. Không ảnh hưởng vận hành, nhưng là <b>nhãn để tìm & phân bổ chi phí</b> ("máy này của dự án nào? ai trả tiền?"). Cột Name hiện sẵn ở EC2 console.</td></tr>
+</table>
+
+<!-- ---------- block keypair ---------- -->
+<h3>🔑 Key pair — chìa khóa SSH</h3>
+<pre class="code"><span class="ln">24</span><span class="k">resource</span> <span class="s">"aws_key_pair"</span> <span class="s">"learn_terraform_key"</span> {
+<span class="ln">25</span>  <span class="a">key_name</span>   = <span class="s">"learn_terraform_key"</span>
+<span class="ln">26</span>  <span class="c"># Terraform KHÔNG hiểu "~" phải viết đường dẫn tuyệt đối đầy đủ:</span>
+<span class="ln">27</span>  <span class="a">public_key</span> = <span class="r">file</span>(<span class="s">"/home/nguyenhungvy09/.ssh/devops-learn.pub"</span>)
+<span class="ln">28</span>}</pre>
+<table>
+<tr><th style="width:5em">Dòng</th><th>Giải thích</th></tr>
+<tr><td>24</td><td>Resource kiểu <span class="mono">aws_key_pair</span> = "một public key được đăng ký trong tài khoản AWS".</td></tr>
+<tr><td>25</td><td><b>key_name</b> = tên key <b>trên AWS</b> (khác với dòng 16: dòng đó nói "máy này dùng key tên gì").instance được gắn key nào thì đúng public key đó mới SSH được.</td></tr>
+<tr><td>27</td><td><b>public_key</b> = nội dung chìa công khai. Hàm <span class="mono">file()</span> đọc nó từ đĩa <b>v lúc chạy plan</b> (vì vậy plan in ra nguyên chuỗi <span class="mono">ssh-ed25519 AAAA...</span>). Lý do an toàn của cả cơ chế: AWS chỉ giữ <b>public</b>; <b>private key</b> không rời máy bạn — chưa từng gửi cho ai, kể cả AWS.</td></tr>
+</table>
+
+<!-- ---------- block sg ---------- -->
+<h3>🛡️ Security Group — firewall cấp máy</h3>
+<pre class="code"><span class="ln">30</span><span class="k">resource</span> <span class="s">"aws_security_group"</span> <span class="s">"learn_terraform_sg"</span> {
+<span class="ln">31</span>  <span class="a">name</span>        = <span class="s">"learn-terraform-sg"</span>
+<span class="ln">32</span>  <span class="a">description</span> = <span class="s">"SG for learning"</span>
+<span class="ln">33</span>  <span class="a">vpc_id</span>      = <span class="r">data.aws_vpc.default.id</span>
+<span class="ln">34</span>
+<span class="ln">35</span>  <span class="a">ingress</span> {
+<span class="ln">36</span>    <span class="a">description</span> = <span class="s">"SSH"</span>
+<span class="ln">37</span>    <span class="a">from_port</span>   = <span class="n">22</span>
+<span class="ln">38</span>    <span class="a">to_port</span>     = <span class="n">22</span>
+<span class="ln">39</span>    <span class="a">protocol</span>    = <span class="s">"tcp"</span>
+<span class="ln">40</span>    <span class="a">cidr_blocks</span> = [<span class="s">"113.23.122.254/32"</span>]
+<span class="ln">41</span>  }
+<span class="ln">42</span>
+<span class="ln">43</span>  <span class="a">egress</span> {
+<span class="ln">44</span>    <span class="a">description</span> = <span class="s">"all outbound"</span>
+<span class="ln">45</span>    <span class="a">from_port</span>   = <span class="n">0</span>
+<span class="ln">46</span>    <span class="a">to_port</span>     = <span class="n">0</span>
+<span class="ln">47</span>    <span class="a">protocol</span>    = <span class="s">"-1"</span>
+<span class="ln">48</span>    <span class="a">cidr_blocks</span> = [<span class="s">"0.0.0.0/0"</span>]
+<span class="ln">49</span>  }
+<span class="ln">50</span>  <span class="a">tags</span> = {
+<span class="ln">51</span>    <span class="a">Name</span> = <span class="s">"learn-terraform"</span>
+<span class="ln">52</span>  }
+<span class="ln">53</span>}</pre>
+<table>
+<tr><th style="width:5em">Dòng</th><th>Giải thích</th></tr>
+<tr><td>31</td><td>Tên SG — phải <b>duy nhất trong một VPC</b> (đó là lý do cần dòng 33).</td></tr>
+<tr><td>32</td><td>Mô tả — <span class="tag create">cẩn thận</span> trên AWS, description của SG <b>không sửa được sau khi tạo</b> (đổi = tạo SG mới).</td></tr>
+<tr><td>33</td><td>Nhúng SG vào đúng VPC, đọc từ data source dòng 7. Không khai báo dòng này thì AWS đặt vào default VPC — may mà đúng, nhưng code "ăn may" là code nợ.</td></tr>
+<tr><td>35–41</td><td>Một block <b>ingress</b> = <b>MỘT rule cho phép đi VÀO</b>. Đọc tiếng người: <i>"Cho phép giao thức TCP, chỉ port 22 (from=to=22), chỉ từ đúng IP 113.23.122.254 (/32 = một IP duy nhất), đi vào máy của ta."</i></td></tr>
+<tr><td>37–38</td><td>Khoảng port. 1 port duy nhất → hai vế bằng nhau. (Mở web: 80; HTTPS: 443; dải 8000–8100 → from=8000 to=8100.)</td></tr>
+<tr><td>39</td><td><span class="mono">"tcp"</span> — SSH chạy trên TCP. Các giá trị: <span class="mono">tcp</span>, <span class="mono">udp</span>, <span class="mono">"-1"</span>.</td></tr>
+<tr><td>40</td><td>List CIDR nguồn được phép. <span class="mono">/32</span> = đúng 1 IP; <span class="mono">/24</span> = 256 IP; <span class="mono">/0</span> = mọi IP. IP của bạn là IP động của nhà mạng — đổi nhà mạng/diễn lại là mất SSH 😄.</td></tr>
+<tr><td>43–49</td><td>Rule cho traffic <b>đi RA</b>. Công thức "mở hết": protocol <span class="mono">-1</span> (mọi giao thức) + port 0–0 + <span class="mono">0.0.0.0/0</span> (mọi đích). <b>Vì sao bắt buộc phải viết?</b> — vì SG mới của AWS <b>mặc định chặn toàn bộ chiều ra</b>. Không có nó: không tải package, không cập nhật, không gọi API. <i>Không có dòng = không được phép.</i></td></tr>
+<tr><td>50–52</td><td>Nhãn cho SG — tìm bằng <span class="mono">terraform state list</span>, và hiển thị trên console.</td></tr>
+</table>
+
+<div class="card warn">
+<b>Nhận xét "code review" file hiện tại</b> (chưa cần sửa ngay, biết để trưởng thành):<br>
+• Thiếu rule <span class="mono">ingress</span> port 80 → bài 3 dựng web sẽ phải thêm (và SG thêm rule tại chỗ, không replace máy — khác key_name!).<br>
+• <span class="mono">root_block_device { encrypted = true }</span> nên thêm sau này — disk hiện chưa mã hóa.<br>
+• IP trong CIDR là giá trị "cứng" — sẽ học tham số hóa bằng <b>variable</b> ở bài sau.
+</div>
+</section>
+
+<!-- ===================== 4. GRAPH ===================== -->
+<section id="graph">
+<h2>4 · Sơ đồ phụ thuộc — Terraform tự xếp lịch</h2>
+<p>Bạn không khai thứ tự tạo, nhưng Terraform <b>suy ra</b> từ các dòng tham chiếu:</p>
+<div class="graph">
+  <div class="gnode">data "aws_vpc" "default"<small>tra cứu trước tiên (2 giây — bạn thấy trong plan)</small></div>
+  <div class="garrow">↓ vpc_id</div>
+  <div class="cols">
+    <div class="gnode">aws_key_pair<small>độc lập → tạo song song</small></div>
+    <div class="gnode">aws_security_group<small>độc lập → tạo song song</small></div>
+  </div>
+  <div class="garrow">↓ key_name&nbsp;&nbsp;&nbsp;&nbsp;↓ vpc_security_group_ids</div>
+  <div class="gnode" style="border-color:var(--ok)"><b>aws_instance "example"</b><small>luôn SAU CÙNG — vì cần cả hai cái trên</small></div>
+</div>
+<div class="card ok">
+Đây chính là đoạn bạn chứng kiến live trong apply: destroy máy cũ → tạo key + SG (song song) → tạo máy mới. <b>Muốn mở khóa bài này?</b> nhìn vào dòng 16–17: hai dòng đó là "sợi dây" vẽ ra sơ đồ.
+</div>
+</section>
+
+<!-- ===================== 5. TỪ ĐIỂN ===================== -->
+<section id="tudien">
+<h2>5 · Từ điển bỏ túi</h2>
+<table>
+<tr><th style="width:14em">Thuật ngữ</th><th>Nghĩa thuần Việt</th></tr>
+<tr><td><b>provider</b></td><td>Plugin điều khiển một cloud/dịch vụ (aws, google, cloudflare…). Terraform vốn "mù" về AWS — provider mới biết.</td></tr>
+<tr><td><b>resource</b></td><td>Một thứ bạn <i>muốn tồn tại</i>: máy, key, SG… Cú pháp: <span class="mono">resource "kiểu" "nhãn"</span>.</td></tr>
+<tr><td><b>data source</b></td><td>Một thứ <i>đã tồn tại</i>, chỉ <i>đọc</i> thông tin (id, cidr…).</td></tr>
+<tr><td><b>argument</b></td><td>Thuộc tính bạn viết trong cấu hình (<span class="mono">ami</span>, <span class="mono">region</span>…).</td></tr>
+<tr><td><b>attribute</b></td><td>Thuộc tính AWS trả về — có loại đọc tham chiếu được (<span class="mono">.id</span>, <span class="mono">.arn</span>, <span class="mono">.public_ip</span>).</td></tr>
+<tr><td><b>reference</b></td><td>Viết <span class="mono">loại.nhãn.attribute</span> để "nối" resource — Terraform dịch thành thứ tự tạo.</td></tr>
+<tr><td><b>state file</b></td><td><span class="mono">terraform.tfstate</span> — bộ nhớ của Terraform: ánh xạ "địa chỉ trong code ↔ ID thật trên AWS". <b>Mất nó = Terraform không còn biết tài nguyên của mình là gì.</b></td></tr>
+<tr><td><b>plan / apply</b></td><td><b>plan</b> = tính và in "sẽ làm gì" (không làm). <b>apply</b> = làm thật (hiện plan, hỏi yes).<br><b>destroy</b> = tính và xóa mọi resource Terraform đang quản lý.</td></tr>
+<tr><td><b>(known after apply)</b></td><td>Chưa thể biết giá trị (AWS chưa tạo) — không phải thay đổi bạn yêu cầu.</td></tr>
+<tr><td><b>forces replacement</b></td><td>AWS không cho đổi tại chỗ → phải đập đi tạo lại. Đọc trước khi apply như đọc hợp đồng.</td></tr>
+<tr><td><b>VPC / subnet / AZ</b></td><td>VPC = mạng riêng của bạn trong AWS. Subnet = một dải IP con trong VPC. AZ (ap-southeast-2b) = một khu vực vật lý riêng.</td></tr>
+<tr><td><b>Security Group</b></td><td>Firewall gắn vào máy, chỉ có <i>rule cho phép</i> (whitelist), ingress vào / egress ra.</td></tr>
+<tr><td><b>AMI</b></td><td>Bản OS + chuẩn bị boot. ID chỉ có hiệu lực trong region chứa nó.</td></tr>
+<tr><td><b>CIDR /32</b></td><td>Cách viết "một dải IP" — hậu tố càng nhỏ dải càng lớn. /32 = 1 IP, /24 = 256 IP, 0.0.0.0/0 = tất cả.</td></tr>
+<tr><td><b>public / private IP</b></td><td>Public = nhìn từ internet (đổi khi máy bị tạo lại). Private = IP nội bộ VPC (mọi máy khác trong VPC nhìn thấy).</td></tr>
+<tr><td><b>SSH key pair</b></td><td>Cặp khóa: private giữ lại máy bạn, công khai lên AWS. SSH = hai bên chứng minh khớp khóa — không mật khẩu.</td></tr>
+<tr><td><b>cloud-init</b></td><td>Trình chạy <i>lúc máy boot lần đầu</i>: đọc key, chạy script user_data — log ở <span class="mono">/var/log/cloud-init-output.log</span>.</td></tr>
+</table>
+</section>
+
+<!-- ===================== 6. QUIZ ===================== -->
+<section id="quiz">
+<h2>6 · Tự kiểm tra (10 câu)</h2>
+<p>Nhấp từng câu để xem đáp án. Trả lời được hết = nắm vững file này.</p>
+
+<details><summary>1. Nhãn "example" đổi thành "new" thì điều gì xảy ra?</summary>
+Terraform coi đó là resource khác hoàn toàn → destroy máy cũ + create máy mới (dù nội dung không đổi). Địa chỉ trong code là danh tính thật của resource đối với Terraform.</details>
+
+<details><summary>2. terraform.tfstate là gì và vì sao không được làm mất?</summary>
+Bản ghi trạng thái + ánh xạ địa chỉ→ID AWS. Mất nó → Terraform không biết tài nguyên thật là cái nào, không xóa/cập nhật được, plan sẽ đòi tạo lại mọi thứ (hoặc phải import).</details>
+
+<details><summary>3. Vì sao region làm lỗi InvalidAMIID.NotFound?</summary>
+AMI ID chỉ tồn tại trong region chứa nó. ami-04f5... ở region khác, không có ở ap-southeast-2 → "does not exist".</details>
+
+<details><summary>4. data khác resource ở điểm nào? Nêu 2 ví dụ trong file.</summary>
+resource = tạo mới (aws_instance, aws_key_pair, aws_security_group). data = tra cứu cái có sẵn (aws_vpc default — không tạo VPC, chỉ đọc ID của nó).</details>
+
+<details><summary>5. SG mới tạo trên AWS mặc định cho traffic ra/vao thế nào?</summary>
+Chặn TẤT CẢ cả vào lẫn ra. Mọi thứ thông đều phải do rule cho phép (whitelist).</details>
+
+<details><summary>6. cidr_blocks = ["1.2.3.4/32"] nghĩa là gì? /24 thì sao?</summary>
+/32 = đúng 1 IP. /24 = cả dải 1.2.3.0–1.2.3.255 (256 IP). 0.0.0.0/0 = mọi IP trên internet.</details>
+
+<details><summary>7. Vì sao đổi key_name phải đập máy, còn đổi tag thì không?</summary>
+Key được cloud-init tiêm lúc boot — máy đang chạy không tiêm lại được. Tag chỉ là nhãn metadata trên AWS, sửa tại chỗ (update in-place). Đọc plan sẽ thấy: tag → ~ update, key → -/+ replace.</details>
+
+<details><summary>8. "(known after apply)" là gì? Có phải thay đổi bạn yêu cầu không?</summary>
+Là giá trị do AWS sinh ra mà chưa tạo nên chưa biết (IP, ARN, volume id…). KHÔNG phải ý định của bạn — mẹo đọc plan: lọc hết dòng known after apply, phần còn lại mới là thay đổi thật.</details>
+
+<details><summary>9. 2 tham số SSH của dòng lệnh ssh? -i là gì?</summary>
+<span class="mono">ssh -i ~/.ssh/devops-learn ec2-user@13.239.43.200</span> — -i = private key dùng để chứng minh danh tính; ec2-user = user mặc định của Amazon Linux (Ubuntu dùng "ubuntu").</details>
+
+<details><summary>10. Nếu có người xóa máy EC2 ngay trên AWS console (tay), chạy terraform plan thì sao?</summary>
+Plan sẽ refresh, phát hiện trong state ghi còn mà AWS không còn → báo recreate máy (phát hiện "drift"). Bài học: luôn plan trước khi apply, và đừng sửa tay trên tài nguyên Terraform quản lý.</details>
+</section>
+
+<footer>
+Tiếp theo — <b>Chương 3</b>: <a href="03-user-data-tu-dung-web-server.html">user_data — máy tự dựng web server</a> ✅ đã học.<br>
+Bộ giáo trình: <a href="00-danh-muc.html">📚 00-danh-muc.html</a> · <a href="01-vong-lap-terraform-va-state.html">← Chương 1</a> · mở bằng <span class="mono">xdg-open</span> trong thư mục <span class="mono">hoc-terraform/</span>
+</footer>
+
+</div>
+</body>
+</html>

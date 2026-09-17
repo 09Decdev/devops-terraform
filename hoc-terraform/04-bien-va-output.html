@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chương 4 — Variable & Output</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --text: #1c2330; --muted: #5b6676;
+    --accent: #2563eb; --accent-soft: #dbeafe; --code-bg: #0f172a; --code-text: #e2e8f0;
+    --border: #dde3ea; --ok: #16a34a; --warn: #d97706; --bad: #dc2626;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b0f17; --card: #121826; --text: #dbe2ec; --muted: #8b96a8;
+      --accent: #60a5fa; --accent-soft: #1e3a5f; --code-bg: #0d1320; --code-text: #dbe2ec;
+      --border: #232d3f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.65; font-size: 16px; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; }
+  nav.chapbar { display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0 4px; font-size: .88rem; }
+  nav.chapbar a { color: var(--accent); text-decoration: none; background: var(--card);
+    border: 1px solid var(--border); border-radius: 999px; padding: 4px 14px; }
+  nav.chapbar a:hover { background: var(--accent-soft); }
+  h1 { font-size: 1.7rem; margin: 14px 0 4px; }
+  h1 .sub { display: block; font-size: .95rem; color: var(--muted); font-weight: 400; }
+  h2 { font-size: 1.3rem; margin: 42px 0 12px; border-bottom: 2px solid var(--accent); padding-bottom: 6px; }
+  h3 { font-size: 1.05rem; margin: 24px 0 8px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; margin: 14px 0; }
+  .note { border-left: 4px solid var(--accent); }
+  .warn { border-left: 4px solid var(--warn); }
+  .ok   { border-left: 4px solid var(--ok); }
+  code, .mono { font-family: ui-monospace, "JetBrains Mono", Consolas, monospace;
+    background: var(--code-bg); color: var(--code-text); padding: 2px 7px; border-radius: 6px; font-size: .86em; }
+  pre.code { background: var(--code-bg); color: var(--code-text); padding: 16px 18px; border-radius: 12px;
+    overflow-x: auto; font-size: .88rem; line-height: 1.7;
+    font-family: ui-monospace, "JetBrains Mono", Consolas, monospace; }
+  pre.code .c { color: #6b7a99; } pre.code .s { color: #a5d6ff; }
+  pre.code .a { color: #7ee787; } pre.code .n { color: #ffa657; } pre.code .k { color: #ff7b72; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: .92rem; }
+  th, td { border: 1px solid var(--border); padding: 9px 12px; text-align: left; vertical-align: top; }
+  th { background: var(--accent-soft); }
+  tr:nth-child(even) td { background: rgba(127,127,127,.045); }
+  details { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 10px 16px; margin: 10px 0; }
+  summary { cursor: pointer; font-weight: 600; }
+  footer { margin-top: 56px; color: var(--muted); font-size: .85rem; border-top: 1px solid var(--border); padding-top: 16px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<nav class="chapbar">
+  <a href="00-danh-muc.html">📚 Danh mục</a>
+  <a href="03-user-data-tu-dung-web-server.html">← Chương 3</a>
+  <span style="align-self:center">Chương 4 / 9</span>
+  <span style="align-self:center; color:var(--muted); font-size:.85rem">tiếp: Chương 5 (tổ chức file) — tạo sau khi học</span>
+</nav>
+
+<h1>Chương 4 · Variable & Output — thoát khỏi hard-code
+  <span class="sub">Học ngày 17/09/2026 · IP/region/instance_type đã là biến · 2 output đang hoạt động</span>
+</h1>
+
+<h2>1 · Vì sao: tách KHUÔN khỏi CHẤT ĐIỀN</h2>
+<div class="card note">
+Code (main.tf) nên là thứ <b>ổn định</b>; giá trị (IP, cỡ máy, region) đổi hàng ngày. Nhét giá trị vào code = mỗi lần đổi phải sửa code + dễ sửa thiếu (IP nằm ở 1 chỗ SG, mai mốt 5 chỗ). Variable giải quyết cả hai: <b>khai báo cái lỗ, điền giá trị bên ngoài</b>.
+</div>
+
+<h2>2 · Anatomy của variable</h2>
+<pre class="code"><span class="k">variable</span> <span class="s">"my_ip"</span> {
+  <span class="a">description</span> = <span class="s">"IP duoc phep SSH vao may"</span>  <span class="c"># hiện khi plan hỏi giá trị</span>
+  <span class="a">type</span>        = <span class="s">string</span>                        <span class="c"># string | number | bool | list(string) | map(string)</span>
+  <span class="c"># KHÔNG default = bắt buộc người chạy phải cung cấp (plan sẽ DỪNG hỏi)</span>
+}
+
+<span class="k">variable</span> <span class="s">"instance_type"</span> {
+  <span class="a">type</span>    = <span class="s">string</span>
+  <span class="a">default</span> = <span class="s">"t3.micro"</span>   <span class="c"># có default = tùy chọn; người dùng không nói gì thì dùng cái này</span>
+}</pre>
+
+<h3>3 nơi điền giá trị — độ ưu tiên tăng dần</h3>
+<table>
+<tr><th>#</th><th>Nơi</th><th>Ví dụ</th><th>Dùng khi</th></tr>
+<tr><td>1</td><td><code>default</code> trong file</td><td><code>default = "ap-southeast-2"</code></td><td>giá trị phổ biến an toàn</td></tr>
+<tr><td>2</td><td>File <code>terraform.tfvars</code> (tự đọc, cùng thư mục)</td><td><code>my_ip = "113.23.122.254"</code></td><td>giá trị thật của bạn/team — <b>file này hay chứa dữ liệu nhạy cảm, cân nhắc khi commit Git</b></td></tr>
+<tr><td>3</td><td>Env var <code>TF_VAR_&lt;tên&gt;</code></td><td><code>TF_VAR_instance_type=t3.small terraform plan</code></td><td>CI/CD, thử nhanh, secret. <b>Chỉ sống bằng 1 lệnh</b> — không nhiễm vào đâu</td></tr>
+</table>
+
+<h2>3 · Dùng biến: 2 dạng — nhớ thuộc lòng</h2>
+<pre class="code"><span class="a">instance_type</span> = <span class="r">var.instance_type</span>          <span class="c"># CẢ giá trị là biến → dùng thẳng, không ${}</span>
+<span class="a">cidr_blocks</span>   = [<span class="s">"${var.my_ip}/32"</span>]       <span class="c"># biến NẰM TRONG chuỗi → BẮT BUỘC ${...}</span></pre>
+<div class="card warn">
+<b>Lỗi kinh điển số 1:</b> viết <code>["var.my_ip/32"]</code> — Terraform hiểu là <b>chuỗi chữ</b> "var.my_ip/32", không hề sai cú pháp, nhưng CIDR vô nghĩa. Cách tự vệ: refactor xong cứ <code>terraform plan</code> — nếu mọi thứ ra <i>No changes</i> như cũ thì nội suy đúng; nếu SG hiện <code>~ update in-place</code> với giá trị lạ = bạn quên <code>${}</code>.
+</div>
+
+<h2>4 · Output — biến chiều ngược lại</h2>
+<pre class="code"><span class="k">output</span> <span class="s">"public_IP"</span> {
+  <span class="a">description</span> = <span class="s">"IP cong khai de truy cap"</span>
+  <span class="a">value</span>       = <span class="r">aws_instance.example.public_ip</span>
+}</pre>
+<pre class="code"><span class="a">terraform output</span>                  <span class="c"># xem tất cả</span>
+<span class="a">terraform output</span> public_IP          <span class="c"># một cái</span>
+<span class="a">terraform output -raw</span> public_IP     <span class="c"># không dấu nháy → IP=$(terraform output -raw public_IP)</span></pre>
+<table>
+<tr><th>Đặc tính</th><th>Ý nghĩa thực chiến</th></tr>
+<tr><td>Output lưu trong <b>state</b>, in ra cuối mỗi apply</td><td>Áp dụng output mới có thể tạo plan "0 added, 0 changed, 0 destroyed" — apply <b>metadata</b>, không đụng hạ tầng ("You can apply this plan to save these new output values... without changing any real infrastructure")</td></tr>
+<tr><td>Output <b>track nguồn</b> của nó</td><td>Nguồn đổi → output đổi theo: <code>~ public_IP = "..." -&gt; (known after apply)</code> xuất hiện khi resource nguồn sắp stop/start</td></tr>
+<tr><td>Terraform không in giá trị output ra giữa <code>plan</code> nếu nó phụ thuộc thứ chưa tạo</td><td>Đó là lúc bạn gặp <code>(sensitive value)</code> / known after apply ở mục Changes to Outputs</td></tr>
+</table>
+
+<h2>5 · Thí nghiệm đã chạy — và kết luận</h2>
+<div class="card ok">
+<b>A — Refactor không đổi đời:</b> thay 3 hard-code bằng biến với cùng giá trị → plan chỉ ra <b>"Changes to Outputs"</b>, <b>không</b> resource nào đổi. <i>Plan sạch (phía infra) là bài test của mọi lần chỉ-dọn-code.</i>
+</div>
+<div class="card ok">
+<b>B — TF_VAR test không nhiễm:</b> <code>TF_VAR_instance_type=t3.small terraform plan</code> → <code>~ instance_type = "t3.micro" -&gt; "t3.small"</code>, <b>update in-place</b> (khác key_name = replace). Nhưng kèm chữ ký quen mặt: <code>public_ip -&gt; (known after apply)</code> trong khi <code>id</code> giữ nguyên → AWS không đổi size lúc đang chạy → provider <b>stop → đổi → start</b>, và stop/start thì đổi public IP. <i>Cách đọc: id nguyên + public_ip known-after = "có nhịp stop/start phía sau".</i> Không apply — env var chỉ sống bằng lệnh plan đó.
+</div>
+<div class="card warn">
+<b>C — Biến bắt buộc:</b> tắt tfvars đi (<code>mv</code>) → plan <b>dừng</b> tại <code>var.my_ip: Enter a value:</code>. Không phải lỗi — là thiết kế: thiếu nguyên liệu thì hỏi, không tự chế.
+</div>
+
+<div class="card note"><b>Bẫy hoa-thường:</b> bạn đặt <code>variable "my_IP"</code> — Terraform phân biệt chữ hoa/thường; tfvars/env phải khớp tên <b>từng ký tự</b> (<code>my_IP</code> ≠ <code>my_ip</code>). Chuẩn cộng đồng: snake_case thuần, <code>my_ip</code>.</div>
+
+<h2>6 · Quiz tự kiểm tra</h2>
+<details><summary>1. Variable không default, không tfvars, không env → chuyện gì khi chạy plan?</summary>Plan dừng và hỏi tương tác "Enter a value". Nếu muốn nó không bao giờ hỏi (CI), cho default hoặc buộc qua tfvars commit sẵn.</details>
+<details><summary>2. Vì sao ["var.my_ip/32"] là lỗi nhưng Terraform không báo lỗi?</summary>Nó là chuỗi hợp lệ — Terraform không bắt được "ý bạn là khác".plan chỉ báo SG đổi giá trị CIDR (in-place) — đọc plan mới thấy. Cú pháp đúng ≠ ngữ nghĩa đúng.</details>
+<details><summary>3. TF_VAR_ip=x plan xong, lệnh plan thường tiếp theo dùng giá trị nào?</summary>Giá trị trong default/tfvars — env var chỉ sống bằng tiến trình lệnh đó.</details>
+<details><summary>4. Apply chỉ có "Changes to Outputs" thì hạ tầng thay đổi gì?</summary>Không gì cả. Output là metadata trong state. Resources: 0/0/0.</details>
+<details><summary>5. Đổi instance_type update hay replace? Vì sao public_ip vẫn (known after apply)?</summary>Update in-place (cùng id), nhưng AWS yêu cầu stop máy mới đổi được size → provider stop→modify→start → public IP động bị cấp lại.</details>
+<details><summary>6. Output công dụng gì ngoài in cho vui?</summary>Kết nối với thế giới: script/CI lấy IP bằng terraform output -raw; output của stack này làm input stack khác (terraform_remote_state); description + sensitive=true khi chứa bí mật.</details>
+
+<h2>7 · File hiện tại sau chương 4</h2>
+<pre class="code">main.tf            <span class="c"># 3 variable + provider/data/3 resource + 2 output</span>
+terraform.tfvars   <span class="c"># my_IP = "113.23.122.254"</span></pre>
+
+<footer>
+Chương tiếp: <b>Chương 5 — Tổ chức file</b>: tách providers.tf / variables.tf / main.tf / outputs.tf + terraform fmt & validate · <a href="00-danh-muc.html">📚 Danh mục</a> · <a href="03-user-data-tu-dung-web-server.html">← Chương 3</a>
+</footer>
+
+</div>
+</body>
+</html>

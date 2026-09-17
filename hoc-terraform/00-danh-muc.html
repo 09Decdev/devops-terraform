@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Danh mục — Giáo trình Terraform thực chiến</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --text: #1c2330; --muted: #5b6676;
+    --accent: #2563eb; --accent-soft: #dbeafe; --border: #dde3ea;
+    --done: #16a34a; --doing: #d97706; --todo: #8b96a8; --code-bg: #0f172a; --code-text: #e2e8f0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b0f17; --card: #121826; --text: #dbe2ec; --muted: #8b96a8;
+      --accent: #60a5fa; --accent-soft: #1e3a5f; --border: #232d3f; --code-bg: #0d1320;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.65; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; }
+  h1 { font-size: 1.9rem; margin: 24px 0 4px; }
+  h1 .sub { display: block; font-size: 1rem; color: var(--muted); font-weight: 400; }
+  h2 { font-size: 1.25rem; margin: 36px 0 12px; border-bottom: 2px solid var(--accent); padding-bottom: 6px; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: .93rem; }
+  th, td { border: 1px solid var(--border); padding: 10px 12px; text-align: left; vertical-align: top; }
+  th { background: var(--accent-soft); }
+  td.num { text-align: center; font-weight: 700; width: 2.5em; }
+  a { color: var(--accent); }
+  .st { display: inline-block; font-size: .78rem; font-weight: 700; padding: 2px 10px; border-radius: 999px; white-space: nowrap; }
+  .st.done  { background: rgba(22,163,74,.15);  color: var(--done); }
+  .st.doing { background: rgba(217,119,6,.15);  color: var(--doing); }
+  .st.todo  { background: rgba(139,150,168,.15); color: var(--todo); }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; margin: 14px 0; }
+  .note { border-left: 4px solid var(--accent); }
+  .mono, code { font-family: ui-monospace, "JetBrains Mono", Consolas, monospace;
+    background: var(--code-bg); color: var(--code-text); padding: 2px 7px; border-radius: 6px; font-size: .86em; }
+  footer { margin-top: 48px; color: var(--muted); font-size: .85rem; border-top: 1px solid var(--border); padding-top: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>🎓 Giáo trình Terraform thực chiến
+  <span class="sub">Học qua project thật: 1 EC2 instance → hạ tầng chuẩn production · cập nhật 17/09/2026</span>
+</h1>
+
+<div class="card note">
+<b>Cách dùng bộ giáo trình này</b> (đọc khi mở session học mới):<br>
+• Mỗi buổi học trong Claude Code, mở đầu bằng câu: <i>"đọc danh mục hoc-terraform rồi tiếp tục học"</i> — AI sẽ biết bạn đang ở bài nào.<br>
+• Học xong buổi nào, yêu cầu lưu thành file chương đó — mọi lý thuyết + lỗi thật đã gặp đều nằm đây, không phụ thuộc lịch sử chat.<br>
+• Mở file bằng: <span class="mono">xdg-open 00-danh-muc.html</span> (tự đổi sáng/tối theo hệ điều hành).<br>
+• Quiz cuối mỗi chương: trả lời được hết mới sang chương sau.
+</div>
+
+<h2>📚 Lộ trình & tiến độ</h2>
+<table>
+<tr><th>#</th><th>Chương</th><th>Nội dung chính</th><th>Trạng thái</th></tr>
+<tr>
+  <td class="num">01</td>
+  <td><a href="01-vong-lap-terraform-va-state.html">Vòng lặp Terraform & đọc state</a></td>
+  <td>init/plan/apply/destroy · anatomy của terraform.tfstate · đọc terraform show · ký hiệu +/-/~/-/+ · refresh & drift</td>
+  <td><span class="st done">✅ đã học</span></td>
+</tr>
+<tr>
+  <td class="num">02</td>
+  <td><a href="02-keypair-security-group-va-doc-plan.html">Key pair, Security Group & đọc plan</a></td>
+  <td>SSH vào EC2 · SG ingress/egress · CIDR · data source · resource reference · forces replacement · từ điển · giải thích từng dòng main.tf</td>
+  <td><span class="st done">✅ đã học</span></td>
+</tr>
+<tr>
+  <td class="num">03</td>
+  <td><a href="03-user-data-tu-dung-web-server.html">user_data — máy tự dựng web server</a></td>
+  <td>cloud-init · heredoc &lt;&lt;-EOF · cài nginx tự động · ingress 80 · refused vs timeout · per-instance trap · user_data_replace_on_change · -replace · control plane</td>
+  <td><span class="st done">✅ đã học</span></td>
+</tr>
+<tr>
+  <td class="num">04</td>
+  <td><a href="04-bien-va-output.html">Variable & Output — thoát hard-code</a></td>
+  <td>variable/type/default · terraform.tfvars · TF_VAR_ · nội suy ${} · output & -raw · refactor = plan sạch · chữ ký stop/start</td>
+  <td><span class="st done">✅ đã học</span></td>
+</tr>
+<tr>
+  <td class="num">05</td>
+  <td>Tổ chức file trong project</td>
+  <td>tách providers.tf / variables.tf / main.tf / outputs.tf · terraform fmt · terraform validate · đặt tên resource chuẩn</td>
+  <td><span class="st todo">⏳ chưa học</span></td>
+</tr>
+<tr>
+  <td class="num">06</td>
+  <td>Remote state — S3 backend + locking</td>
+  <td>vì sao state local nguy hiểm · backend "s3" · DynamoDB lock · migrate state cũ · state trong team & CI</td>
+  <td><span class="st todo">⏳ chưa học</span></td>
+</tr>
+<tr>
+  <td class="num">07</td>
+  <td>VPC tự tạo thay default VPC</td>
+  <td>aws_vpc / aws_subnet / internet gateway / route table · public vs private subnet · subnet cho instance</td>
+  <td><span class="st todo">⏳ chưa học</span></td>
+</tr>
+<tr>
+  <td class="num">08</td>
+  <td>Module — viết đồ tái sử dụng</td>
+  <td>module {} · input/output của module · module Registry · tách module-ec2 dùng lại nhiều môi trường</td>
+  <td><span class="st todo">⏳ chưa học</span></td>
+</tr>
+<tr>
+  <td class="num">09</td>
+  <td>Hoàn thiện & tối ưu chi phí</td>
+  <td>Elastic IP · mã hóa đĩa (encrypted=true) · provider default_tags · lifecycle · terraform destroy sạch sẽ — không nợ tiền AWS</td>
+  <td><span class="st todo">⏳ chưa học</span></td>
+</tr>
+</table>
+
+<h2>🧾 Tài sản đang có</h2>
+<table>
+<tr><th>Món</th><th>Giá trị còn lại</th></tr>
+<tr><td>SSH key</td><td><span class="mono">~/.ssh/devops-learn</span> (private) — public đã upload lên AWS</td></tr>
+<tr><td>Trên AWS</td><td>1 EC2 <span class="mono">t3.micro</span> đang chạy (free tier) + 1 key pair + 1 SG — nhớ <span class="mono">terraform destroy</span> khi tạm nghỉ dài để khỏi nợ tiền</td></tr>
+<tr><td>Code</td><td><span class="mono">iac-terraform/main.tf</span> — 3 resource + 1 data source, đã apply, plan sạch</td></tr>
+</table>
+
+<footer>
+Giáo trình do người học và AI soạn trong các session Claude Code · Session mới chỉ cần đọc trang này là nắm được toàn bộ tiến độ.
+</footer>
+
+</div>
+</body>
+</html>

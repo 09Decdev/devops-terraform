@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chương 3 — user_data: máy tự dựng web server</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --text: #1c2330; --muted: #5b6676;
+    --accent: #2563eb; --accent-soft: #dbeafe; --code-bg: #0f172a; --code-text: #e2e8f0;
+    --border: #dde3ea; --ok: #16a34a; --warn: #d97706; --bad: #dc2626;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b0f17; --card: #121826; --text: #dbe2ec; --muted: #8b96a8;
+      --accent: #60a5fa; --accent-soft: #1e3a5f; --code-bg: #0d1320; --code-text: #dbe2ec;
+      --border: #232d3f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.65; font-size: 16px; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; }
+  nav.chapbar { display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0 4px; font-size: .88rem; }
+  nav.chapbar a { color: var(--accent); text-decoration: none; background: var(--card);
+    border: 1px solid var(--border); border-radius: 999px; padding: 4px 14px; }
+  nav.chapbar a:hover { background: var(--accent-soft); }
+  h1 { font-size: 1.7rem; margin: 14px 0 4px; }
+  h1 .sub { display: block; font-size: .95rem; color: var(--muted); font-weight: 400; }
+  h2 { font-size: 1.3rem; margin: 42px 0 12px; border-bottom: 2px solid var(--accent); padding-bottom: 6px; }
+  h3 { font-size: 1.05rem; margin: 24px 0 8px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; margin: 14px 0; }
+  .note { border-left: 4px solid var(--accent); }
+  .warn { border-left: 4px solid var(--warn); }
+  .ok   { border-left: 4px solid var(--ok); }
+  .bad  { border-left: 4px solid var(--bad); }
+  code, .mono { font-family: ui-monospace, "JetBrains Mono", Consolas, monospace;
+    background: var(--code-bg); color: var(--code-text); padding: 2px 7px; border-radius: 6px; font-size: .86em; }
+  pre.code { background: var(--code-bg); color: var(--code-text); padding: 16px 18px; border-radius: 12px;
+    overflow-x: auto; font-size: .88rem; line-height: 1.7;
+    font-family: ui-monospace, "JetBrains Mono", Consolas, monospace; }
+  pre.code .c { color: #6b7a99; } pre.code .s { color: #a5d6ff; }
+  pre.code .a { color: #7ee787; } pre.code .n { color: #ffa657; } pre.code .k { color: #ff7b72; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: .92rem; }
+  th, td { border: 1px solid var(--border); padding: 9px 12px; text-align: left; vertical-align: top; }
+  th { background: var(--accent-soft); }
+  tr:nth-child(even) td { background: rgba(127,127,127,.045); }
+  details { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 10px 16px; margin: 10px 0; }
+  summary { cursor: pointer; font-weight: 600; }
+  footer { margin-top: 56px; color: var(--muted); font-size: .85rem; border-top: 1px solid var(--border); padding-top: 16px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<nav class="chapbar">
+  <a href="00-danh-muc.html">📚 Danh mục</a>
+  <a href="02-keypair-security-group-va-doc-plan.html">← Chương 2</a>
+  <span style="align-self:center">Chương 3 / 9</span>
+  <span style="align-self:center; color:var(--muted); font-size:.85rem">tiếp: <a href="04-bien-va-output.html">Chương 4 (Variable & Output)</a> ✅ đã học</span>
+</nav>
+
+<h1>Chương 3 · user_data — máy tự dựng web server khi boot
+  <span class="sub">Học ngày 17/09/2026 · kết quả: <span class="mono">http://52.64.186.192</span> in ra "May nay do Terraform sinh ra tu cat!" · kèm 5 bài học ngoài ý đợi</span>
+</h1>
+
+<!-- ============ 1 ============ -->
+<h2>1 · user_data & cloud-init là gì</h2>
+<div class="card note">
+<b>user_data</b> = đoạn script nhét vào "túi đồ" của instance lúc tạo. Mỗi AMI Linux đều chứa <b>cloud-init</b> — chương trình chạy <i>ngay lúc máy boot lần đầu</i>, đọc túi đồ đó và thực thi script <b>với quyền root</b>.<br><br>
+<b>Vì sao không SSH vào cài tay?</b> Vì máy chủ có thể bị đập và tạo lại bất cứ lúc nào. Script nằm trong <code>main.tf</code> = <b>DNA</b>: mọi máy sinh ra từ code đều tự biết mình phải là web server. Đây là điểm khác biệt giữa "xài server" và "làm chủ server".
+</div>
+
+<h2>2 · Code đã viết</h2>
+<h3>① user_data trong block aws_instance (kèm công tắc)</h3>
+<pre class="code"><span class="a">user_data</span> = <span class="k">&lt;&lt;-EOF</span>
+<span class="s">  #!/bin/bash                          # chạy bằng bash</span>
+<span class="s">  dnf install -y nginx                 # -y = tự trả lời yes khi cài</span>
+<span class="s">  systemctl enable --now nginx        # bật ngay + tự bật mỗi lần reboot</span>
+<span class="s">  echo "&lt;h1&gt;...&lt;/h1&gt;" &gt; /usr/share/nginx/html/index.html</span>
+<span class="k">EOF</span>
+
+<span class="c"># KHÔNG cần sudo — script đã chạy với root qua cloud-init</span>
+<span class="a">user_data_replace_on_change</span> = <span class="n">true</span>   <span class="c"># ← công tắc: đổi script = đập máy tạo lại</span></pre>
+<table>
+<tr><th>Khái niệm</th><th>Giải thích</th></tr>
+<tr><td><code>&lt;&lt;-EOF ... EOF</code></td><td><b>heredoc</b> — "mở khối văn bản tới khi gặp EOF". Dấu <code>-</code> = cho phép thụt lề mà không làm hỏng script.</td></tr>
+<tr><td>Plan in thành <code>&lt;&lt;-EOT</code></td><td>Terraform tự normalize EOF→EOT khi hiển thị — không phải code bạn sai.</td></tr>
+<tr><td><code>user_data_replace_on_change = true</code></td><td>Mặc định <b>false</b> (provider ≥ 5.0): đổi script chỉ cập nhật tại chỗ, máy không bị đập. Bật true = mỗi lần sửa script, máy tạo lại từ đầu để đảm bảo script chạy lại.</td></tr>
+</table>
+
+<h3>② Rule ingress port 80</h3>
+<pre class="code"><span class="a">ingress</span> {
+  <span class="a">description</span> = <span class="s">"http"</span>
+  <span class="a">from_port</span>   = <span class="n">80</span>
+  <span class="a">to_port</span>     = <span class="n">80</span>
+  <span class="a">protocol</span>    = <span class="s">"tcp"</span>
+  <span class="a">cidr_blocks</span> = [<span class="s">"0.0.0.0/0"</span>]   <span class="c"># web PHỤC VỤ THIÊN HẠ — khác SSH!</span>
+}</pre>
+</div>
+
+<!-- ============ 3 ============ -->
+<h2>3 · 5 bài học ngoài kế hoạch (xảy ra thật, nhớ lâu gấp 10)</h2>
+
+<h3>Bài 3.1 — "Túi khí chỉ bung khi va chạm": công tắc chỉ tác động thay đổi TƯƠNG LAI</h3>
+<div class="card warn">
+<b>Chuyện:</b> thêm <code>user_data_replace_on_change = true</code> → plan chỉ ra <code>~ update in-place</code>, không replace. Vì lúc đó script không đổi — công tắc mới lắp, chưa có "va chạm" nào. Muốn tạo lại máy NGAY, phải dùng:
+<pre class="code"><span class="a">terraform apply -replace</span>=<span class="s">aws_instance.example</span></pre>
+<code>-replace</code> (thay cho lệnh cũ <code>taint</code>) = escape hatch của người vận hành: "coi như resource này không tồn tại, tạo lại đi, code không cần đổi". Nó là minh họa: khi <b>đời không theo code</b>, DevOps cần công cụ sửa "đời", nhưng rồi code vẫn là nơi lưu sự thật.
+</div>
+
+<h3>Bài 3.2 — ERR_CONNECTION_REFUSED vs TIMEOUT: mỗi từ là một kết luận điều tra</h3>
+<table>
+<tr><th>Browser báo</th><th>Nghĩa là</th><th>Nơi cần soi</th></tr>
+<tr><td class="mono" style="color:var(--ok)">refused to connect (ERR_CONNECTION_REFUSED)</td><td>Gói tin <b>đã xuyên qua SG tới máy</b> — không process nào nghe port, máy tự từ chối</td><td>✅ firewall ổn → tìm trong máy (service chưa chạy? chưa cài?)</td></tr>
+<tr><td class="mono" style="color:var(--bad)">took too long (timed out, ~30s)</td><td>Gói tin bị chặn ngoài cửa, không tới máy</td><td>❌ firewall → kiểm ingress, CIDR, network ACL</td></tr>
+</table>
+
+<h3>Bài 3.3 — Đổi user_data trên máy đang chạy = update tại chỗ nhưng script KHÔNG chạy lại</h3>
+<div class="card bad">
+<b>Chuyện:</b> lần apply đầu, plan báo "updated in-place", apply "thành công", nhưng web không lên.<br>
+<b>Sự thật:</b> AWS không cho sửa user_data khi máy chạy → provider <b>stop → sửa → start</b> (bằng chứng: <code>public_ip</code> đổi mà <code>id</code> giữ nguyên). Nhưng cloud-init chạy user script với tần suất <b>per-instance — chỉ ở boot ĐẦU TIÊN</b> → máy start lại là boot thứ 2 → <b>script bị bỏ qua</b>.<br>
+<b>Học:</b> Terraform nói "apply thành công" ≠ script đã chạy. Bằng chứng là <code>systemctl status nginx</code> → "could not be found". Xác minh sự thật trên máy, không tin lời của công cụ.
+</div>
+
+<h3>Bài 3.4 — Control plane là laptop của bạn</h3>
+<div class="card note">
+Bạn vô tình gõ <code>terraform plan</code> <b>khi đang SSH trong server</b> → <code>command not found</code>. Đây là minh họa hoàn hảo: Terraform chạy ở máy bạn (nơi có code + state), server chỉ là <b>sản phẩm</b>. Khi quản 50 server, mỗi đầu phiên SSH nên tự hỏi: "mình đang đứng ở máy nào?"
+</div>
+
+<h3>Bài 3.5 — Warning của SSH nói thật đấy</h3>
+<div class="card warn">
+<code>ssh -i ~/ssh/devops-learn</code> (thiếu dấu chấm) → <code>Warning: Identity file ... not accessible</code> nhưng <b>vẫn vào được</b> — vì ssh tự fallback sang key mặc định khác (<code>~/.ssh/id_ed25519</code>...). Cảnh báo không có nghĩa là thất bại, nhưng cũng đừng phớt lờ — hôm nay nó vô hại, hôm sau nó là "key nào đang thực sự mở cửa server này?".
+</div>
+
+<!-- ============ 4 ============ -->
+<h2>4 · Chuỗi xác minh chuẩn (copy để dùng)</h2>
+<pre class="code"><span class="a">terraform apply</span> -replace=aws_instance.example   <span class="c"># duyệt plan có "-/+ replace" trước khi yes</span>
+<span class="a">terraform show</span> | grep public_ip                 <span class="c"># IP mới (máy mới = IP mới)</span>
+<span class="c"># browser: http://&lt;IP&gt;</span>
+<span class="a">ssh</span> -i <span class="s">~/.ssh/devops-learn</span> ec2-user@&lt;IP&gt;         <span class="c"># đúng đường dẫn, đủ dấu chấm 🙂</span>
+<span class="a">sudo systemctl status</span> nginx                      <span class="c"># active (running)?</span>
+<span class="a">head</span> -20 /var/log/cloud-init-output.log          <span class="c"># bằng chứng script chạy lúc boot</span>
+<span class="a">curl</span> -s http://localhost                         <span class="c"># test web NGAY TỪ TRONG máy — tách lỗi service khỏi lỗi mạng</span></pre>
+<div class="card ok">
+Lệnh cuối là mẹo nghề: nếu <code>curl localhost</code> trong server <b>ra nội dung web</b> mà browser ngoài đời không ra → lỗi nằm ở <b>mạng/firewall giữa đường</b>, không phải ở app. Chia đôi vấn đề để trị.
+</div>
+
+<!-- ============ 5 ============ -->
+<h2>5 · Quiz tự kiểm tra</h2>
+<details><summary>1. user_data chạy bằng quyền gì, ở thời điểm nào, do ai thực thi?</summary>Root, lúc boot ĐẦU TIÊN của instance, do cloud-init (có sẵn trong AMI) đọc và chạy. Log ở /var/log/cloud-init-output.log.</details>
+<details><summary>2. Vì sao đổi user_data mà script không chạy lại?</summary>cloud-init chỉ chạy user script ở lần boot đầu; stop/start không phải boot đầu. Terraform vẫn cập nhật thuộc tính (in-place) nên plan "thành công" — nhưng không ai chạy script.</details>
+<details><summary>3. user_data_replace_on_change = true có tác dụng khi nào?</summary>Với các THAY ĐỔI user_data tiếp theo — chính nó (sự bật flag) không gây replace. Muốn replace ngay: sửa script hoặc dùng terraform apply -replace.</details>
+<details><summary>4. Web không lên, browser báo refused — lỗi ở firewall hay trong máy? Vì sao biết?</summary>Traffic đã qua được firewall tới máy (refused = máy từ chối vì không có ai nghe). Lỗi ở trong máy (service chưa chạy). Nếu lỗi firewall → timeout.</details>
+<details><summary>5. -replace dùng khi nào, nó làm gì?</summary>Khi cần tạo lại resource dù code không đổi (đời lệch code). Terraform coi resource như không tồn tại → destroy + create lại.</details>
+<details><summary>6. Vì sao ingress 80 mở 0.0.0.0/0 mà ingress 22 mở đúng IP của bạn?</summary>Web để phục vụ mọi người; SSH chỉ dành cho bạn — mở cho cả internet = 24/7 bot dò mật khẩu. Least privilege.</details>
+
+<footer>
+<b>Thành quả:</b> instance <span class="mono">52.64.186.192</span> chạy nginx do code tự dựng; SG 3 rule; key pair + private key tại <span class="mono">~/.ssh/devops-learn</span>.<br>
+Chương tiếp: <b>Chương 4 — <a href="04-bien-va-output.html">Variable & Output</a></b> ✅ đã học (IP SG hard-code → tham số hóa). · <a href="00-danh-muc.html">📚 Danh mục</a> · <a href="02-keypair-security-group-va-doc-plan.html">← Chương 2</a>
+</footer>
+
+</div>
+</body>
+</html>
