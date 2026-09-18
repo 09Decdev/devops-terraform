@@ -84,6 +84,14 @@ resource "aws_security_group" "learn_terraform_sg" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"] # ← cả thế giới được xem web — khác SSH!
   }
+  ingress {
+    description = "MinIO S3 API - trinh duyet lay anh"
+    from_port   = 19000
+    to_port     = 19000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"] # doc anh -> cong khai nhu http
+  }
+
 
   egress {
     description = "all outbound"
